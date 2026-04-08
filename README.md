@@ -25,7 +25,7 @@ The solutions in this repository are structured to make it easy to navigate. *(Y
 
 ## 💻 Languages Used
 
-- Java / C++ / Python 
+- Java / C / Python 
 
 ## 💡 Goals
 - Consistently solve daily challenges.
