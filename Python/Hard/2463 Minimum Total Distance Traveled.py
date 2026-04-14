@@ -43,31 +43,32 @@ factory[j].length == 2
 0 <= limitj <= robot.length
 The input will be generated such that it is always possible to repair every robot
 '''
-
 class Solution:
     def minimumTotalDistance(self, robot: List[int], factory: List[List[int]]) -> int:
         robot.sort()
         factory.sort()
         
-        # Expand factories based on capacity
-        factories = []
+        n = len(robot)
+        # dp[i] is the min distance for the first i robots
+        # Initialize with a very large value
+        dp = [float('inf')] * (n + 1)
+        dp[0] = 0
+        
         for pos, cap in factory:
-            factories.extend([pos] * cap)
+            # We iterate backwards or use a temporary DP to avoid using 
+            # the same factory capacity multiple times incorrectly
+            new_dp = dp[:]
             
-        n, m = len(robot), len(factories)
-        memo = {}
-
-        def solve(r_idx, f_idx):
-            if r_idx == n: return 0
-            if f_idx == m: return float('inf')
-            if (r_idx, f_idx) in memo: return memo[(r_idx, f_idx)]
+            for i in range(n):
+                if dp[i] == float('inf'):
+                    continue
+                
+                curr_dist = 0
+                # Try assigning 'k' robots to the current factory
+                for k in range(1, min(cap, n - i) + 1):
+                    curr_dist += abs(robot[i + k - 1] - pos)
+                    if dp[i] + curr_dist < new_dp[i + k]:
+                        new_dp[i + k] = dp[i] + curr_dist
+            dp = new_dp
             
-            # Skip current factory instance
-            res = solve(r_idx, f_idx + 1)
-            # Use current factory instance for current robot
-            res = min(res, abs(robot[r_idx] - factories[f_idx]) + solve(r_idx + 1, f_idx + 1))
-            
-            memo[(r_idx, f_idx)] = res
-            return res
-
-        return solve(0, 0)
+        return dp[n]
