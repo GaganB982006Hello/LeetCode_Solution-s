@@ -55,64 +55,106 @@ Constraints:
 1 <= n == nums.length <= 105
 1 <= nums[i] <= 106
 */
-from collections import deque
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
-class Solution:
-    # Precompute Sieve of Eratosthenes up to 10^6
-    MAX_VAL = 1000001
-    spf = list(range(MAX_VAL))
-    for i in range(2, int(MAX_VAL**0.5) + 1):
-        if spf[i] == i:
-            for j in range(i*i, MAX_VAL, i):
-                if spf[j] == j:
-                    spf[j] = i
+#define MAX_VAL 1000001
 
-    def minJumps(self, nums: list[int]) -> int:
-        n = len(nums)
-        if n == 1: return 0
-        
-        # Map each prime to indices where nums[j] % p == 0
-        prime_to_indices = {}
-        for i, val in enumerate(nums):
-            temp = val
-            while temp > 1:
-                p = self.spf[temp]
-                if p not in prime_to_indices:
-                    prime_to_indices[p] = []
-                prime_to_indices[p].append(i)
-                while temp % p == 0:
-                    temp //= p
-        
-        queue = deque([0])
-        visited_idx = [False] * n
-        visited_idx[0] = True
-        visited_primes = set()
-        jumps = 0
-        
-        while queue:
-            for _ in range(len(queue)):
-                curr_idx = queue.popleft()
-                if curr_idx == n - 1:
-                    return jumps
-                
-                # 1. Adjacent Steps
-                for neighbor in [curr_idx - 1, curr_idx + 1]:
-                    if 0 <= neighbor < n and not visited_idx[neighbor]:
-                        visited_idx[neighbor] = True
-                        queue.append(neighbor)
-                
-                # 2. Prime Teleportation (Only if nums[curr_idx] is prime)
-                val = nums[curr_idx]
-                if val > 1 and self.spf[val] == val:
-                    if val not in visited_primes:
-                        visited_primes.add(val)
-                        if val in prime_to_indices:
-                            for next_idx in prime_to_indices[val]:
-                                if not visited_idx[next_idx]:
-                                    visited_idx[next_idx] = True
-                                    queue.append(next_idx)
-                            # Efficiency: Clear the bucket after use
-                            del prime_to_indices[val]
-            jumps += 1
+// Global/Static Sieve for Smallest Prime Factor (SPF)
+int spf[MAX_VAL];
+bool sieve_done = false;
+
+void sieve() {
+    if (sieve_done) return;
+    for (int i = 0; i < MAX_VAL; i++) spf[i] = i;
+    for (int i = 2; i * i < MAX_VAL; i++) {
+        if (spf[i] == i) {
+            for (int j = i * i; j < MAX_VAL; j += i)
+                if (spf[j] == j) spf[j] = i;
+        }
+    }
+    sieve_done = true;
+}
+
+// Linked list node to store indices in prime "buckets"
+typedef struct Node {
+    int index;
+    struct Node* next;
+} Node;
+
+int minJumps(int* nums, int numsSize) {
+    if (numsSize <= 1) return 0;
+    sieve();
+
+    // 1. Pre-process Prime Buckets
+    // Use calloc to initialize all pointers to NULL
+    Node** prime_buckets = (Node**)calloc(MAX_VAL, sizeof(Node*));
+    for (int i = 0; i < numsSize; i++) {
+        int temp = nums[i];
+        while (temp > 1) {
+            int p = spf[temp];
+            Node* newNode = (Node*)malloc(sizeof(Node));
+            newNode->index = i;
+            newNode->next = prime_buckets[p];
+            prime_buckets[p] = newNode;
+            // Remove all instances of this prime factor
+            while (temp % p == 0) temp /= p;
+        }
+    }
+
+    // 2. BFS Setup
+    int* queue = (int*)malloc(numsSize * sizeof(int));
+    bool* visited_idx = (bool*)calloc(numsSize, sizeof(bool));
+    bool* visited_primes = (bool*)calloc(MAX_VAL, sizeof(bool));
+    
+    int head = 0, tail = 0;
+    queue[tail++] = 0;
+    visited_idx[0] = true;
+    int jumps = 0;
+
+    // 3. BFS Execution
+    while (head < tail) {
+        int level_size = tail - head;
+        while (level_size--) {
+            int curr = queue[head++];
+            if (curr == numsSize - 1) {
+                // Free temporary BFS memory before returning
+                free(queue); free(visited_idx); free(visited_primes);
+                return jumps;
+            }
+
+            // Step A: Adjacent Jumps (+1, -1)
+            int neighbors[] = {curr - 1, curr + 1};
+            for (int k = 0; k < 2; k++) {
+                int next = neighbors[k];
+                if (next >= 0 && next < numsSize && !visited_idx[next]) {
+                    visited_idx[next] = true;
+                    queue[tail++] = next;
+                }
+            }
+
+            // Step B: Prime Teleportation
+            int val = nums[curr];
+            // Only teleport if the current number itself is prime
+            if (val > 1 && spf[val] == val && !visited_primes[val]) {
+                visited_primes[val] = true;
+                Node* currNode = prime_buckets[val];
+                while (currNode) {
+                    if (!visited_idx[currNode->index]) {
+                        visited_idx[currNode->index] = true;
+                        queue[tail++] = currNode->index;
+                    }
+                    currNode = currNode->next;
+                }
+            }
+        }
+        jumps++;
+    }
+
+    // Cleanup (Not strictly required for LC but good practice)
+    free(queue); free(visited_idx); free(visited_primes);
+    return -1;
+}
             
         return -1
